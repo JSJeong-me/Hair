@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "This AWS CloudFormation template creates an endpoint for \"Stable Diffusion XL 1.0\" in \"ap-northeast-1\" region."
+Parameters:
+  EndPointName:
+    Type: String
+    Default: "Endpoint-Stable-Diffusion-XL-1-0-1"
+    Description: Specify suitable name to host the model endpoint. This is a mandatory field.
+  IAMRole:
+    Type: String
+    Default: "arn:aws:iam::353101065006:role/aws-service-role/sagemaker.amazonaws.com/AWSServiceRoleForAmazonSageMakerNotebooks"
+    Description: The SageMaker ExecutionRoleArn.
+  ProductARN:
+    Type: String
+    Default: "arn:aws:sagemaker:ap-northeast-1:977537786026:model-package/sdxl-v1-0-8cc703e-43ceeb816ad635d18270e159eb5096ad"
+    Description: Product identifier based on software version and region.
+  InstanceType:
+    Type: String
+    Default: "ml.g5.2xlarge"
+    Description: The deployment instance type.
+    AllowedValues:
+    - "ml.g5.2xlarge"
+    - "ml.p4d.24xlarge"
+    - "ml.p4de.24xlarge"
+  InstanceCount:
+    Type: Number
+    Default: "1"
+    Description: Initial instance count for the endpoint.
+Resources:
+  Model:
+    Type: "AWS::SageMaker::Model"
+    Properties:
+      EnableNetworkIsolation: True
+      ExecutionRoleArn: !Ref IAMRole
+      PrimaryContainer:
+        ModelPackageName: !Ref ProductARN
+  EndPointConfig:
+    Type: "AWS::SageMaker::EndpointConfig"
+    Properties:
+      ProductionVariants:
+      - ModelName: !GetAtt Model.ModelName
+        VariantName: AllTraffic
+        InitialInstanceCount: !Ref InstanceCount
+        InstanceType: !Ref InstanceType
+        InitialVariantWeight: 1
+  EndPoint:
+    Type: "AWS::SageMaker::Endpoint"
+    Properties:
+      EndpointName: !Ref EndPointName
+      EndpointConfigName: !GetAtt EndPointConfig.EndpointConfigName
+Outputs:
+  EndPointConfigName:
+    Description: Endpoint confirmation.
+    Value: !GetAtt 'EndPointConfig.EndpointConfigName'
+  EndpointName:
+    Description: Endpoint Name.
+    Value: !Ref EndPointName
+  EndPointURL:
+    Description: Please use the URL only after endpoint has been created. Endpoint creation can take time. Use SageMaker console to check the status.
+    Value: !Sub 'https://runtime.sagemaker.${AWS::Region}.amazonaws.com/endpoints/${EndPointName}/invocations'
+
